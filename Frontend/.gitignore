@@ -1,0 +1,31 @@
+# Node
+node_modules/
+npm-debug.log
+package-lock.json
+yarn.lock
+
+# Angular
+dist/
+.angular/
+**/.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-workspace
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Testing
+/coverage
+/.nyc_output
+
+# OS
+Thumbs.db
