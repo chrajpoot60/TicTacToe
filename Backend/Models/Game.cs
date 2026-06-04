@@ -2,7 +2,7 @@ using TicTacToe.API.Enums;
 
 namespace TicTacToe.API.Models;
 
-public class GameBoard
+public class Game
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string[][] Board { get; set; } = null!;
@@ -14,7 +14,7 @@ public class GameBoard
     public List<Move> MoveHistory { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public GameBoard()
+    public Game()
     {
         Board = new string[3][];
         for (int i = 0; i < 3; i++)

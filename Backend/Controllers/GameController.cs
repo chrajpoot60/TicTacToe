@@ -55,70 +55,67 @@ public class GameController : ControllerBase
         if (game == null)
             return NotFound();
 
+        // Validate it's the correct player's turn
+        if (game.CurrentPlayer != request.Player)
+            return BadRequest(new { error = $"It's {game.CurrentPlayer}'s turn" });
+
         var (success, error, updatedGame) = await _gameService.MakeMoveAsync(id, request.Player, request.Row, request.Col);
 
         if (!success)
             return BadRequest(new { error });
 
-        // Check if game was completed
+        // Check if game was completed after this move
         if (updatedGame!.Status != GameStatus.InProgress)
         {
             await _scoreboardService.UpdateScoreboardAsync(updatedGame.Winner);
         }
 
-        // Handle computer move if in computer mode and game still in progress
-        if (updatedGame.Mode == GameMode.Computer && updatedGame.Status == GameStatus.InProgress && updatedGame.CurrentPlayer == "O")
-        {
-            var computerMove = _gameService.GetComputerMove(updatedGame);
-            if (computerMove.HasValue)
-            {
-                var (computerSuccess, _, computerUpdatedGame) = await _gameService.MakeMoveAsync(
-                    id, "O", computerMove.Value.row, computerMove.Value.col);
-
-                if (computerSuccess && computerUpdatedGame!.Status != GameStatus.InProgress)
-                {
-                    await _scoreboardService.UpdateScoreboardAsync(computerUpdatedGame.Winner);
-                }
-                updatedGame = computerUpdatedGame;
-            }
-        }
-
         var scoreboard = await _scoreboardService.GetScoreboardAsync();
-        var response = await BuildGameStateResponse(updatedGame!, scoreboard);
+        var response = await BuildGameStateResponse(updatedGame, scoreboard);
         return Ok(response);
     }
 
     /// <summary>
     /// Make a computer move (AI opponent)
     /// </summary>
-    //[HttpPost("{id}/computer-move")]
-    //public ActionResult<GameBoard> MakeComputerMove(string id, [FromBody] ComputerMoveRequest request)
-    //{
-    //    try
-    //    {
-    //        var game = _gameService.MakeComputerMove(id);
-            
-    //        // Record game result when game ends
-    //        if (game.Status == GameStatus.Won)
-    //        {
-    //            _scoreboardService.RecordWin(request.PlayerId, game.Winner ?? ' ');
-    //        }
-    //        else if (game.Status == GameStatus.Draw)
-    //        {
-    //            _scoreboardService.RecordDraw(request.PlayerId);
-    //        }
-            
-    //        return Ok(game);
-    //    }
-    //    catch (KeyNotFoundException)
-    //    {
-    //        return NotFound(new { message = $"Game {id} not found" });
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        return BadRequest(new { message = ex.Message });
-    //    }
-    //}
+    [HttpPost("{id}/computer-move")]
+    public async Task<ActionResult<GameStateResponse>> MakeComputerMove(string id)
+    {
+        var game = await _gameService.GetGameAsync(id);
+        if (game == null)
+            return NotFound();
+
+        // Verify it's computer mode and computer's turn
+        if (game.Mode != GameMode.Computer)
+            return BadRequest(new { error = "Not in computer mode" });
+
+        if (game.CurrentPlayer != "O")
+            return BadRequest(new { error = "Not computer's turn" });
+
+        if (game.Status != GameStatus.InProgress)
+            return BadRequest(new { error = "Game is already completed" });
+
+        // Get computer's move
+        var computerMove = _gameService.GetComputerMove(game);
+        if (!computerMove.HasValue)
+            return BadRequest(new { error = "No valid moves available" });
+
+        // Make the computer's move
+        var (success, error, updatedGame) = await _gameService.MakeMoveAsync(id, "O", computerMove.Value.row, computerMove.Value.col);
+
+        if (!success)
+            return BadRequest(new { error });
+
+        // Check if game was completed after computer's move
+        if (updatedGame!.Status != GameStatus.InProgress)
+        {
+            await _scoreboardService.UpdateScoreboardAsync(updatedGame.Winner);
+        }
+
+        var scoreboard = await _scoreboardService.GetScoreboardAsync();
+        var response = await BuildGameStateResponse(updatedGame, scoreboard);
+        return Ok(response);
+    }
 
     /// <summary>
     /// Undo the last move
@@ -129,6 +126,10 @@ public class GameController : ControllerBase
         var game = await _gameService.GetGameAsync(id);
         if (game == null)
             return NotFound();
+
+        // Don't allow undo if game is completed (Option A)
+        if (game.Status != GameStatus.InProgress)
+            return BadRequest(new { error = "Cannot undo a completed game" });
 
         var (success, updatedGame) = await _gameService.UndoMoveAsync(id);
 
@@ -156,7 +157,7 @@ public class GameController : ControllerBase
         return Ok(response);
     }
 
-    private async Task<GameStateResponse> BuildGameStateResponse(GameBoard game, Scoreboard scoreboard)
+    private async Task<GameStateResponse> BuildGameStateResponse(Game game, Scoreboard scoreboard)
     {
         return new GameStateResponse
         {

@@ -5,23 +5,23 @@ namespace TicTacToe.API.Services;
 
 public class GameService : IGameService
 {
-    private readonly Dictionary<string, GameBoard> _games = new();
+    private readonly Dictionary<string, Game> _games = new();
     private readonly object _lockObject = new();
 
-    public Task<GameBoard> CreateGameAsync(GameMode mode)
+    public Task<Game> CreateGameAsync(GameMode mode)
     {
-        var game = new GameBoard { Mode = mode };
+        var game = new Game { Mode = mode };
         _games[game.Id] = game;
         return Task.FromResult(game);
     }
 
-    public Task<GameBoard?> GetGameAsync(string gameId)
+    public Task<Game?> GetGameAsync(string gameId)
     {
         _games.TryGetValue(gameId, out var game);
         return Task.FromResult(game);
     }
 
-    public Task<(bool success, string error, GameBoard? game)> MakeMoveAsync(string gameId, string player, int row, int col)
+    public Task<(bool success, string error, Game? game)> MakeMoveAsync(string gameId, string player, int row, int col)
     {
         lock (_lockObject)
         {
@@ -72,15 +72,15 @@ public class GameService : IGameService
         }
     }
 
-    public Task<(bool success, GameBoard? game)> UndoMoveAsync(string gameId)
+    public Task<(bool success, Game? game)> UndoMoveAsync(string gameId)
     {
         lock (_lockObject)
         {
             if (!_games.TryGetValue(gameId, out var game))
-                return Task.FromResult((success:false, game));
+                return Task.FromResult((false, game));
 
             if (game.MoveHistory.Count == 0)
-                return Task.FromResult((success:false, game));
+                return Task.FromResult((false, game));
 
             // In computer mode, remove computer's move and human's move
             if (game.Mode == GameMode.Computer)
@@ -124,11 +124,11 @@ public class GameService : IGameService
                 game.CurrentPlayer = game.MoveHistory.Last().Player == "X" ? "O" : "X";
             }
 
-            return Task.FromResult((success:true, game));
+            return Task.FromResult((true, game));
         }
     }
 
-    public Task<GameBoard> ResetGameAsync(string gameId)
+    public Task<Game> ResetGameAsync(string gameId)
     {
         lock (_lockObject)
         {
@@ -209,7 +209,7 @@ public class GameService : IGameService
         return true;
     }
 
-    public (int row, int col)? GetComputerMove(GameBoard game)
+    public (int row, int col)? GetComputerMove(Game game)
     {
         if (game.Status != GameStatus.InProgress)
             return null;
@@ -221,6 +221,7 @@ public class GameService : IGameService
             {
                 if (string.IsNullOrEmpty(game.Board[i][j]))
                 {
+                    // Try O move
                     game.Board[i][j] = "O";
                     var (hasWinner, winner, _) = CheckWinner(game.Board);
                     game.Board[i][j] = "";
@@ -237,6 +238,7 @@ public class GameService : IGameService
             {
                 if (string.IsNullOrEmpty(game.Board[i][j]))
                 {
+                    // Check if X would win here
                     game.Board[i][j] = "X";
                     var (hasWinner, winner, _) = CheckWinner(game.Board);
                     game.Board[i][j] = "";
