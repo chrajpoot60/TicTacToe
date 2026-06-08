@@ -1,0 +1,111 @@
+<div class="app-container">
+  <header class="app-header">
+    <h1>🎮 Tic Tac Toe</h1>
+    <div class="mode-selector">
+      <button
+        [class.active]="selectedMode === 'TwoPlayer'"
+        (click)="onModeChange('TwoPlayer')">
+        👥 Two Players
+      </button>
+      <button
+        [class.active]="selectedMode === 'Computer'"
+        (click)="onModeChange('Computer')">
+        🤖 vs Computer
+      </button>
+    </div>
+  </header>
+
+  <div class="error-banner" *ngIf="errorMessage">
+    ⚠️ {{ errorMessage }}
+    <button (click)="errorMessage = null">✕</button>
+  </div>
+
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+  </div>
+
+  <main class="game-layout" *ngIf="game">
+    <!-- Left: Board + Controls -->
+    <section class="game-section">
+      <!-- Status -->
+      <div class="status-box" [class.status-win]="game.status === 'Won'" [class.status-draw]="game.status === 'Draw'">
+        {{ statusMessage }}
+      </div>
+
+      <!-- Board -->
+      <div class="board" [class.board-disabled]="game.status !== 'InProgress' || isLoading">
+        <button
+          *ngFor="let cell of game.board; let i = index"
+          class="cell"
+          [class.cell-x]="cell === 'X'"
+          [class.cell-o]="cell === 'O'"
+          [class.cell-winning]="isWinningCell(i)"
+          [class.cell-empty]="!cell"
+          [disabled]="!!cell || game.status !== 'InProgress'"
+          (click)="onCellClick(i)">
+          {{ cell }}
+        </button>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button class="btn btn-primary" (click)="onReset()">🔄 Reset Game</button>
+        <button class="btn btn-secondary" (click)="onUndo()" [disabled]="!canUndo">↩ Undo Move</button>
+      </div>
+    </section>
+
+    <!-- Right: Scoreboard + History -->
+    <section class="info-section">
+      <!-- Scoreboard -->
+      <div class="panel scoreboard-panel">
+        <div class="panel-header">
+          <h2>🏆 Scoreboard</h2>
+          <button class="btn-link" (click)="onResetScoreboard()">Reset</button>
+        </div>
+        <div class="scoreboard-grid">
+          <div class="score-item score-x">
+            <span class="score-label">X Wins</span>
+            <span class="score-value">{{ game.scoreboard.xWins }}</span>
+          </div>
+          <div class="score-item score-draw">
+            <span class="score-label">Draws</span>
+            <span class="score-value">{{ game.scoreboard.draws }}</span>
+          </div>
+          <div class="score-item score-o">
+            <span class="score-label">O Wins</span>
+            <span class="score-value">{{ game.scoreboard.oWins }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Move History -->
+      <div class="panel history-panel">
+        <div class="panel-header">
+          <h2>📋 Move History</h2>
+          <span class="move-count">{{ game.moveHistory.length }} moves</span>
+        </div>
+        <div class="history-table-wrapper">
+          <table class="history-table" *ngIf="game.moveHistory.length > 0; else noMoves">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Player</th>
+                <th>Position</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let move of game.moveHistory" [class.row-x]="move.player === 'X'" [class.row-o]="move.player === 'O'">
+                <td>{{ move.moveNumber }}</td>
+                <td><span class="player-badge" [class.badge-x]="move.player === 'X'" [class.badge-o]="move.player === 'O'">{{ move.player }}</span></td>
+                <td>Row {{ move.row + 1 }}, Col {{ move.column + 1 }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #noMoves>
+            <p class="no-moves">No moves yet. Start playing!</p>
+          </ng-template>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

@@ -1,177 +1,187 @@
-# Tic Tac Toe Application
+# Tic Tac Toe — Angular 18 + .NET 10
 
-A browser-based Tic Tac Toe solution with an Angular frontend and an ASP.NET Core Web API backend.
+A full-stack Tic Tac Toe application built with an **Angular 18** frontend and a **.NET 10** REST API backend.
 
-## Current Status
+---
 
-- Backend builds successfully.
-- Frontend currently does not build. The Angular app has TypeScript and SCSS syntax issues that need to be cleaned up before it can run.
-- Backend and frontend contracts are not fully aligned yet. In particular, the frontend currently expects a flat board and `id`, while the backend returns `gameId` and a 2D board.
+## Tech Stack
 
-## Project Structure
+| Layer     | Technology                          |
+|-----------|-------------------------------------|
+| Frontend  | Angular 18, TypeScript, SCSS        |
+| Backend   | .NET 10, ASP.NET Core Web API       |
+| API Style | RESTful JSON                        |
+| Storage   | In-memory (singleton service)       |
+| Testing   | xUnit + FluentAssertions (backend), Jasmine + Karma (frontend) |
 
-```text
-TicTacToe/
-+-- Backend/                 # ASP.NET Core Web API
-|   +-- Controllers/
-|   |   +-- GameController.cs
-|   |   +-- ScoreboardController.cs
-|   +-- Enums/
-|   |   +-- Enums.cs
-|   +-- Models/
-|   |   +-- GameBoard.cs
-|   |   +-- Move.cs
-|   |   +-- Scoreboard.cs
-|   +-- Services/
-|   |   +-- GameService.cs
-|   |   +-- IGameService.cs
-|   |   +-- ScoreboardService.cs
-|   |   +-- IScoreboardService.cs
-|   +-- Program.cs
-|   +-- TicTacToe.API.csproj
-|   +-- TicTacToe.API.sln
-|
-+-- Frontend/                # Angular application
-    +-- src/
-    |   +-- app/
-    |       +-- components/
-    |       |   +-- game/
-    |       |   +-- scoreboard/
-    |       +-- models/
-    |       +-- services/
-    |       +-- app.routes.ts
-    +-- angular.json
-    +-- package.json
-    +-- proxy.conf.json
-    +-- tsconfig.json
-```
+---
 
-## Technology Stack
+## Features Implemented
 
-- Frontend: Angular 18, TypeScript
-- Backend: ASP.NET Core Web API targeting `net10.0`
-- API style: REST
-- Storage: In-memory singleton services
-- Communication: HTTP/HTTPS
+- ✅ 3×3 Tic Tac Toe board
+- ✅ Two Player Mode
+- ✅ Play Against Computer (with AI priority: win → block → center → corner → random)
+- ✅ Turn switching (X always goes first)
+- ✅ Win detection (rows, columns, diagonals) with winning cell highlight
+- ✅ Draw detection
+- ✅ Move history table
+- ✅ Undo last move (Two Player: 1 move; Computer: 2 moves)
+- ✅ Reset Game (board only, scoreboard preserved)
+- ✅ Scoreboard (X wins, O wins, Draws)
+- ✅ Reset Scoreboard
+- ✅ Backend owns game state (source of truth)
+- ✅ Move validation (bounds, occupied cells, wrong turn, game complete)
+- ✅ Unit tests for backend and frontend
 
-## Backend
+---
 
-### Prerequisites
+## Prerequisites
 
-- .NET SDK compatible with `net10.0`
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [Node.js 18+](https://nodejs.org/) and npm
+- [Angular CLI 18](https://angular.io/cli): `npm install -g @angular/cli`
 
-### Run
+---
+
+## How to Run — Backend
 
 ```bash
-cd Backend
-dotnet restore
+cd backend/TicTacToe.API
 dotnet run
 ```
 
-The backend launch profile is configured for:
+The API will start at **http://localhost:5000**.
 
-- HTTPS: `https://localhost:54418`
-- HTTP: `http://localhost:54419`
+---
 
-Swagger is enabled in development.
-
-### Backend Build Check
+## How to Run — Frontend
 
 ```bash
-dotnet build Backend/TicTacToe.API.csproj
-```
-
-Current result: succeeds with nullable reference warnings in `GameService.cs`.
-
-## Frontend
-
-### Prerequisites
-
-- Node.js 18+
-- npm
-
-### Install
-
-```bash
-cd Frontend
+cd frontend
 npm install
+ng serve
 ```
 
-### Run
+Open your browser at **http://localhost:4200**.
 
+---
+
+## API Endpoint Summary
+
+| Method | Endpoint                    | Description             |
+|--------|-----------------------------|-------------------------|
+| POST   | /api/games                  | Create a new game       |
+| GET    | /api/games/{id}             | Get current game state  |
+| POST   | /api/games/{id}/moves       | Submit a player move    |
+| POST   | /api/games/{id}/undo        | Undo last move(s)       |
+| POST   | /api/games/{id}/reset       | Reset the current game  |
+| GET    | /api/scoreboard             | Get scoreboard          |
+| POST   | /api/scoreboard/reset       | Reset scoreboard        |
+
+### Create Game Request
+```json
+{ "mode": "TwoPlayer" }   // or "Computer"
+```
+
+### Make Move Request
+```json
+{ "row": 0, "column": 2 }
+```
+
+### Game State Response
+```json
+{
+  "id": "...",
+  "board": ["X", null, "O", ...],
+  "currentPlayer": "X",
+  "mode": "TwoPlayer",
+  "status": "InProgress",
+  "winner": null,
+  "winningCells": null,
+  "moveHistory": [
+    { "moveNumber": 1, "player": "X", "row": 0, "column": 0 }
+  ],
+  "scoreboard": { "xWins": 1, "oWins": 0, "draws": 0 }
+}
+```
+
+---
+
+## How to Run Tests
+
+### Backend Tests
 ```bash
-npm start
+cd backend
+dotnet test
 ```
 
-The Angular app is configured to serve at `http://localhost:4200`.
-
-### Frontend Build Check
-
+### Frontend Tests
 ```bash
-cd Frontend
-npm run build
+cd frontend
+ng test --watch=false --browsers=ChromeHeadless
 ```
 
-Current result: fails due to syntax errors in:
+---
 
-- `src/app/components/game/game.component.ts`
-- `src/app/components/scoreboard/scoreboard.component.scss`
+## Design Decisions
 
-## API Endpoints
+### Option A — Undo Disabled After Game Completion
+Once a game reaches `Won` or `Draw` status, the Undo button is disabled. The scoreboard update is final for that game. This keeps the scoreboard simple and consistent. (**Option A chosen**)
 
-### Games
+### Backend as Source of Truth
+All game logic (validation, win/draw detection, computer moves, undo) lives in the .NET backend. The Angular frontend is a pure rendering layer that calls APIs and displays whatever the backend returns.
 
-- `POST /api/games` - Create a new game. Optional query parameter: `mode`
-- `GET /api/games/{id}` - Get current game state
-- `POST /api/games/{id}/moves` - Submit a move
-- `POST /api/games/{id}/undo` - Undo the last move, or the last player/computer turn pair in computer mode
-- `POST /api/games/{id}/reset` - Reset the current board
+### Computer AI Priority
+The computer (Player O) follows this move selection order:
+1. Win if possible (take winning cell)
+2. Block the human (block X's winning move)
+3. Take center (index 4)
+4. Take a corner (0, 2, 6, 8)
+5. Take any available cell
 
-### Scoreboard
+### In-Memory Storage
+`GameService` is registered as a **Singleton** in .NET DI, so state persists for the lifetime of the process. On restart, all games and the scoreboard reset. SQLite could be added by injecting a DbContext instead.
 
-- `GET /api/scoreboard` - Get aggregate scoreboard
-- `POST /api/scoreboard/reset` - Reset scoreboard
+### Standalone Angular Components
+The app uses Angular 18's standalone component API (no NgModules). `AppComponent` imports only `CommonModule` and is bootstrapped directly in `main.ts`.
 
-## Implemented Backend Features
+---
 
-- Create and retrieve game sessions
-- Two-player mode enum support
-- Computer mode enum support
-- In-memory game storage
-- Move validation
-- Winner detection
-- Draw detection
-- Move history
-- Undo
-- Reset board
-- Simple computer move strategy
-- Aggregate scoreboard for X wins, O wins, and draws
+## Clarifications & Assumptions
 
-## Computer Move Strategy
+- **Undo approach**: Option A (disabled after completion).
+- **Computer plays as O**: Human is always X in Computer mode.
+- **Scoreboard is session-level**: Resets when the backend process restarts.
+- **Game ID persists through reset**: Resetting a game reuses the same game ID.
+- **No authentication**: All endpoints are open (local development only).
 
-The backend AI chooses a move using this order:
+---
 
-1. Win if O has an immediate winning move.
-2. Block X if X has an immediate winning move.
-3. Take the center.
-4. Take a corner.
-5. Take any remaining empty cell.
+## Known Limitations
 
-## Known Gaps
+- In-memory only: no persistence between server restarts.
+- Single scoreboard shared across all sessions.
+- No WebSocket — the frontend polls only on user action (no real-time multiplayer across browser tabs).
 
-- Frontend does not currently compile.
-- Frontend move requests use a single `position`, while the backend expects `row` and `col`.
-- Frontend expects `id`, but backend responses use `gameId`.
-- Frontend expects a flat `string[]` board, while backend returns `string[][]`.
-- Frontend expects scoreboard entries, while backend returns aggregate scoreboard fields.
-- Frontend calls `/api/games/{id}/computer-move`, but that backend endpoint is commented out. The backend currently performs the computer move automatically inside the player move endpoint when the game mode is `Computer`.
-- Frontend does not currently pass the selected game mode when creating a game.
+---
 
-## Next Fixes
+## Future Improvements
 
-1. Clean up the corrupted/duplicated code in `game.component.ts`.
-2. Fix the malformed SCSS in `scoreboard.component.scss`.
-3. Align frontend models with backend response DTOs.
-4. Convert frontend move positions into backend `row` and `col`, or change the backend to accept a flat position.
-5. Decide whether computer moves should be automatic or exposed through a separate endpoint.
-6. Add focused backend and frontend tests around move flow, undo, draw, win, and scoreboard updates.
+- Add SQLite or EF Core for persistent storage
+- Add WebSocket support for real-time multiplayer
+- Add difficulty levels for computer AI (minimax)
+- Add player name customization
+- Add animated board transitions
+- Add game history / replay feature
+
+---
+
+## AI Tools & Prompt Summary
+
+This solution was built with AI assistance. Key prompts used:
+- "Implement Tic Tac Toe problem statement: Angular 18 + .NET 10 backend"
+- "Implement game service with win detection, undo, scoreboard, computer AI"
+- "Write comprehensive xUnit tests covering all acceptance criteria"
+- "Write Angular component with responsive board, move history, scoreboard"
+
+All generated code was reviewed for correctness against the problem statement requirements.
